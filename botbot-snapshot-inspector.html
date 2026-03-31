@@ -80,7 +80,7 @@ async function refreshBotTable(botArray) {
 			<td><code>${bot.uuid}</code></td>
 			<td>${bot.initialized}</td>
 			<td>${bot.variables.uptimeutc}</td>
-			<td><code style=white-space:pre-line>${JSON.stringify(userVariables, null, 1).slice(1, -1)}</code></td>
+			<td><code style=white-space:pre-line>${JSON.stringify(userVariables, null, 1).slice(1, -1).trim()}</code></td>
 			<td>
 				<details ${code.length < 110 ? 'open' : ''}>
 					<summary>Code (${`${code}\n`.match(/\n/g).length} lines, ${code.length} characters)</summary>
