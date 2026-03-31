@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<meta charset=utf8>
+<title>BotBot snapshots inspector (WIP)</title>
+
+<label>select BotBot snapshot file(s):<br>
+<input type=file id=FILES multiple accept='.json, application/json' style='border-radius: 5px; border: 1px solid black; padding: 1em' ondragover='this.style.borderStyle = "dashed"' ondragleave='this.style.borderStyle = "solid"' ondrop='this.style.borderStyle = "solid"'>
+</label>
+<table id=TABLE>
+<thead>
+	<tr>
+		<th>Nickname</th>
+		<th>Room</th>
+		<th>Creator</th>
+		<th>Paused? and PauseText</th>
+		<th>UUID</th>
+		<th>Initialized?</th>
+		<th>~Hatched</th>
+		<th>Variables</th>
+		<th>Code</th>
+	</tr>
+</thead>
+<tbody id=ROWS>
+</tbody>
+</table>
+
+<script>
+'use strict'
+const BOTS = []
+
+async function refreshBotsList(fileList) {
+	BOTS.length = 0
+	ROWS.innerHTML = ''
+	for (const file of fileList) {
+		BOTS.push(JSON.parse(await file.text()))
+	}
+	// tricks stolen from <https://stackoverflow.com/a/37129036> and <https://stackoverflow.com/a/31638198>
+	// FIXME: actually escape shit properly contextually so it doesn't break if held wrong
+	const html = (strings, ...values) => strings.flatMap((s, i) => [s, String(values[i]||'').replace(/[&<>'"]/g, c => `&#${c.charCodeAt(0)};`)]).slice(0, -1).join('')
+	for (const bot of BOTS) {
+		const userVariables = Object.fromEntries(
+			Object.entries(bot.variables)
+			.filter(([key]) => !!! [
+				'creator',
+				'atcreator',
+				'@creator',
+				'self',
+				'atself',
+				'@self',
+				'sender',
+				'atsender',
+				'@sender',
+				'uptime',
+				'uptimeutc',
+				'groups',
+				'room',
+				'uuid',
+			].includes(key))
+		)
+		ROWS.innerHTML += html`<tr>
+			<td>${bot.nickname}</td>
+			<td>${bot.room}</td>
+			<td>${bot.creator}</td>
+			<td>${bot.paused} (${bot.pauseText})</td>
+			<td>${bot.uuid}</td>
+			<td>${bot.initialized}</td>
+			<td>${bot.variables.uptimeutc}</td>
+			<td><code style=white-space:pre-line>${JSON.stringify(userVariables, null, 1).slice(1, -1)}</code></td>
+			<td><pre>${bot.code}</pre></td>
+		</tr>`
+	}
+}
+
+FILES.addEventListener('change', e => {
+	refreshBotsList(FILES.files)
+})
+</script>
