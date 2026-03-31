@@ -1,10 +1,14 @@
 <!DOCTYPE html>
 <meta charset=utf8>
 <title>BotBot snapshots inspector (WIP)</title>
+<style>table {border-collapse: collapse} th, td {border: 1px solid; padding: .2em}</style>
 
 <label>select BotBot snapshot file(s):<br>
 <input type=file id=FILES multiple accept='.json, application/json' style='border-radius: 5px; border: 1px solid black; padding: 1em' ondragover='this.style.borderStyle = "dashed"' ondragleave='this.style.borderStyle = "solid"' ondrop='this.style.borderStyle = "solid"'>
 </label>
+<button type=button onclick="FILES.dispatchEvent(new Event('change'))">Reload Files</button>
+<output id=ERRORS style="color: #e00; font-weight: bold; display: block;">
+</output>
 <table id=TABLE>
 <thead>
 	<tr>
@@ -27,16 +31,27 @@
 'use strict'
 const BOTS = []
 
-async function refreshBotsList(fileList) {
-	BOTS.length = 0
-	ROWS.innerHTML = ''
+async function reloadBotArray(fileList, botArray) {
+	botArray.length = 0
+	ERRORS.innerHTML = ''
 	for (const file of fileList) {
-		BOTS.push(JSON.parse(await file.text()))
+		try {
+			botArray.push(JSON.parse(await file.text()))
+		} catch(e) {
+			console.error(`Error parsing/loading file "${file.name}":`, e)
+			ERRORS.innerHTML += `Error parsing/loading file "${file.name}": ${e}<br/>`
+		}
 	}
-	// tricks stolen from <https://stackoverflow.com/a/37129036> and <https://stackoverflow.com/a/31638198>
-	// FIXME: actually escape shit properly contextually so it doesn't break if held wrong
-	const html = (strings, ...values) => strings.flatMap((s, i) => [s, String(values[i]||'').replace(/[&<>'"]/g, c => `&#${c.charCodeAt(0)};`)]).slice(0, -1).join('')
-	for (const bot of BOTS) {
+	return botArray
+}
+
+// tricks stolen from <https://stackoverflow.com/a/37129036> and <https://stackoverflow.com/a/31638198>
+// FIXME: actually escape shit properly contextually so it doesn't break if held wrong
+const html = (strings, ...values) => strings.flatMap((s, i) => [s, String(i in values ? values[i] : '').replace(/[&<>'"]/g, c => `&#${c.charCodeAt(0)};`)]).slice(0, -1).join('')
+
+async function refreshBotTable(botArray) {
+	ROWS.innerHTML = ''
+	for (const bot of botArray) {
 		const userVariables = Object.fromEntries(
 			Object.entries(bot.variables)
 			.filter(([key]) => !!! [
@@ -56,21 +71,28 @@ async function refreshBotsList(fileList) {
 				'uuid',
 			].includes(key))
 		)
+		const code = bot.code.trim()
 		ROWS.innerHTML += html`<tr>
 			<td>${bot.nickname}</td>
-			<td>${bot.room}</td>
-			<td>${bot.creator}</td>
+			<td>&amp;${bot.room}</td>
+			<td>@${bot.creator}</td>
 			<td>${bot.paused} (${bot.pauseText})</td>
-			<td>${bot.uuid}</td>
+			<td><code>${bot.uuid}</code></td>
 			<td>${bot.initialized}</td>
 			<td>${bot.variables.uptimeutc}</td>
 			<td><code style=white-space:pre-line>${JSON.stringify(userVariables, null, 1).slice(1, -1)}</code></td>
-			<td><pre>${bot.code}</pre></td>
+			<td>
+				<details ${code.length < 110 ? 'open' : ''}>
+					<summary>Code (${`${code}\n`.match(/\n/g).length} lines, ${code.length} characters)</summary>
+					<pre>${code}</pre>
+				</details>
+			</td>
 		</tr>`
 	}
 }
 
 FILES.addEventListener('change', e => {
-	refreshBotsList(FILES.files)
+	reloadBotArray(FILES.files, BOTS)
+	.then(botArray => refreshBotTable(botArray))
 })
 </script>
