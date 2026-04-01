@@ -1,7 +1,13 @@
 <!DOCTYPE html>
 <meta charset=utf8>
 <title>BotBot snapshots inspector (WIP)</title>
-<style>table {border-collapse: collapse} th, td {border: 1px solid; padding: .2em}</style>
+<style>
+table { border-collapse: collapse }
+th, td { border: 1px solid; padding: .2em; }
+[data-sort-key] { cursor: pointer }
+[data-sort-order='1']::after { content: ' ▲' }
+[data-sort-order='-1']::after { content: ' ▼' }
+</style>
 
 <label>select BotBot snapshot file(s):<br>
 <input type=file id=FILES multiple accept='.json, application/json' style='border-radius: 5px; border: 1px solid black; padding: 1em' ondragover='this.style.borderStyle = "dashed"' ondragleave='this.style.borderStyle = "solid"' ondrop='this.style.borderStyle = "solid"'>
@@ -12,13 +18,14 @@
 <table id=TABLE>
 <thead>
 	<tr>
-		<th>Nickname</th>
-		<th>Room</th>
-		<th>Creator</th>
-		<th>Paused? and PauseText</th>
-		<th>UUID</th>
-		<th>Initialized?</th>
-		<th>~Hatched</th>
+		<th data-sort-key='nickname'>Nickname</th>
+		<th data-sort-key='room'>Room</th>
+		<th data-sort-key='creator'>Creator</th>
+		<th data-sort-key='pauseText'>Paused? and PauseText</th>
+		<th data-sort-key='uuid' data-sort-order='1'>UUID</th>
+		<th data-sort-key='initialized'>Initialized?</th>
+		<th data-sort-key='uptimeutc'>~Hatched</th>
+		<!-- TODO: allow sorting variables and code by count/length -->
 		<th>Variables</th>
 		<th>Code</th>
 	</tr>
@@ -29,7 +36,41 @@
 
 <script>
 'use strict'
+const $ = (q, el) => (el || document).querySelector(q)
+const $$ = (q, el) => [...(el || document).querySelectorAll(q)]
+
 const BOTS = []
+const SETTINGS = {sortKey: 'uuid', sortOrder: 1} // 1 = ascending, -1 = descending
+
+$$('[data-sort-key]').forEach(el => {
+	el.tabIndex = 0
+	el.addEventListener('click', resortClickEvent)
+})
+
+function resortClickEvent(e) {
+	const el = e.target
+	if (el.dataset.sortKey == SETTINGS.sortKey) {
+		const newOrder = -SETTINGS.sortOrder
+		SETTINGS.sortOrder = newOrder
+		el.dataset.sortOrder = newOrder
+	} else {
+		delete $('[data-sort-order]').dataset.sortOrder // right on!
+		el.dataset.sortOrder = SETTINGS.sortOrder
+		SETTINGS.sortKey = el.dataset.sortKey
+	}
+	refreshBotTable(resortBots(BOTS, SETTINGS))
+}
+
+function resortBots(botArray, settings) {
+	const {sortKey, sortOrder} = settings
+	// i sure love JS /s
+	botArray.sort(({[sortKey]: a}, {[sortKey]: b}) => {
+		if (a == b) return 0
+		if (a > b) return sortOrder
+		if (a < b) return -sortOrder
+	})
+	return botArray
+}
 
 const logError = (label, fileName, error) => {
 	console.error(label, `file "${fileName}":`, error)
@@ -110,6 +151,6 @@ async function refreshBotTable(botArray) {
 
 FILES.addEventListener('change', e => {
 	reloadBotArray(FILES.files, BOTS)
-	.then(botArray => refreshBotTable(botArray))
+	.then(botArray => refreshBotTable(resortBots(botArray, SETTINGS)))
 })
 </script>
