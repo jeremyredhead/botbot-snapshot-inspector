@@ -24,7 +24,7 @@ th, td { border: 1px solid; padding: .2em; }
 		<th data-sort-key='pauseText'>Paused? and PauseText</th>
 		<th data-sort-key='uuid' data-sort-order='1'>UUID</th>
 		<th data-sort-key='initialized'>Initialized?</th>
-		<th data-sort-key='uptimeutc'>~Hatched</th>
+		<th data-sort-key='$uptimeutc'>~Hatched</th>
 		<!-- TODO: allow sorting variables and code by count/length -->
 		<th>Variables</th>
 		<th>Code</th>
@@ -83,7 +83,9 @@ async function reloadBotArray(fileList, botArray) {
 	for (const file of fileList) {
 		if (file == null) continue
 		try {
-			botArray.push(JSON.parse(await file.text()))
+			const bot = JSON.parse(await file.text())
+			bot.$uptimeutc = bot.variables.uptimeutc // HACK: around resortBots limitation
+			botArray.push(bot)
 		} catch(e) {
 			if (e instanceof SyntaxError) {
 				logError('Error parsing', file.name, e)
