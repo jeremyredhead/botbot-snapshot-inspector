@@ -31,15 +31,32 @@
 'use strict'
 const BOTS = []
 
+const logError = (label, fileName, error) => {
+	console.error(label, `file "${fileName}":`, error)
+	ERRORS.innerHTML += `${label} file "${fileName}": ${e}<br/>`
+}
+
 async function reloadBotArray(fileList, botArray) {
 	botArray.length = 0
 	ERRORS.innerHTML = ''
 	for (const file of fileList) {
+		if (file == null) continue
 		try {
 			botArray.push(JSON.parse(await file.text()))
 		} catch(e) {
-			console.error(`Error parsing/loading file "${file.name}":`, e)
-			ERRORS.innerHTML += `Error parsing/loading file "${file.name}": ${e}<br/>`
+			if (e instanceof SyntaxError) {
+				logError('Error parsing', file.name, e)
+			}
+			else if (e instanceof DOMException && e.name == 'AbortError') {
+				// assume this is due to the file having been deleted
+				// -- there seems to be no proper or even good way to check this
+				// see <https://stackoverflow.com/q/46029416>
+
+				// we can't delete a File from a FileList, so just log to console
+				console.debug(`File "${file.name}" seems to have been deleted:`, file)
+			} else {
+				logError('Unknown error', file.name, e)
+			}
 		}
 	}
 	return botArray
